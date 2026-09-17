@@ -1,0 +1,109 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
+    --primary: 123 46% 34%; /* #2E7D32 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 125 43% 94%; /* #E8F5E9 */
+    --secondary-foreground: 123 52% 24%; /* #1B5E20 */
+    --muted: 120 10% 97%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 122 39% 64%; /* #81C784 */
+    --accent-foreground: 123 52% 24%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 88%; /* #E0E0E0 */
+    --input: 0 0% 88%;
+    --ring: 123 46% 34%;
+    --radius: 0.75rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: #212121;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom subtle grid background */
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    radial-gradient(circle, rgba(46, 125, 50, 0.08) 1px, transparent 1px);
+}
+
+.bg-dot-pattern {
+  background-image: radial-gradient(#81C784 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Smooth glass effect with mint tint */
+.glass-mint {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(224, 224, 224, 0.8);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F4FBF5;
+}
+::-webkit-scrollbar-thumb {
+  background: #A5D6A7;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #81C784;
+}
+
+/* Print Styles for PDF Export */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide navigation, sidebar, upload area, and non-printable elements */
+  nav,
+  header,
+  aside,
+  footer,
+  .no-print,
+  button:not(.print-include) {
+    display: none !important;
+  }
+
+  /* Expand main container to full width */
+  main,
+  .max-w-6xl {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-page-break {
+    page-break-after: always;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

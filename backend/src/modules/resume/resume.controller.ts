@@ -1,0 +1,80 @@
+import { Request, Response } from 'express';
+import { AppError } from '../../utils/errors.js';
+import { getRouteParam } from '../../utils/route-params.js';
+import { resumeService } from './resume.service.js';
+
+export async function uploadResume(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const resume = await resumeService.uploadResume(req.user.id, req.file);
+  res.status(201).json({ resume });
+}
+
+export async function listResumes(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const resumes = await resumeService.listResumes(req.user.id);
+  res.status(200).json({ resumes });
+}
+
+export async function getResume(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const resume = await resumeService.getResume(req.user.id, getRouteParam(req.params, 'id'));
+  res.status(200).json({ resume });
+}
+
+export async function deleteResume(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  await resumeService.deleteResume(req.user.id, getRouteParam(req.params, 'id'));
+  res.status(204).send();
+}
+
+export async function processResume(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const resume = await resumeService.processResume(req.user.id, getRouteParam(req.params, 'id'));
+  res.status(200).json({ resume });
+}
+
+export async function analyzeResumeForJob(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const { resumeJobAnalysisService } = await import('./resume-job-analysis.service.js');
+  const resumeId = getRouteParam(req.params, 'id');
+  const { jobTitle, jobDescription } = req.body as { jobTitle?: string; jobDescription: string };
+
+  const result = await resumeJobAnalysisService.analyzeResumeForJob(req.user.id, {
+    resumeId,
+    jobTitle,
+    jobDescription,
+  });
+
+  res.status(200).json(result);
+}
+
+export async function listJobAnalyses(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const { resumeJobAnalysisService } = await import('./resume-job-analysis.service.js');
+  const resumeId = getRouteParam(req.params, 'id');
+  const analyses = await resumeJobAnalysisService.listJobAnalyses(req.user.id, resumeId);
+
+  res.status(200).json({ analyses });
+}
+

@@ -1,0 +1,9 @@
+process.env.NODE_ENV = 'test';
+process.env.BACKEND_PORT = '4000';
+process.env.CORS_ORIGIN = 'http://localhost:3000';
+process.env.LOG_LEVEL = 'error';
+process.env.SUPABASE_URL = 'https://example.supabase.co';
+process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+process.env.RESUME_STORAGE_BUCKET = 'resumes';
+process.env.RESUME_MAX_FILE_SIZE_BYTES = '5242880';
