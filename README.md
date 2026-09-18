@@ -1,4 +1,4 @@
-# ElevateCV (UpSkilr)
+# ElevateCV 
 
 > **AI-Powered Resume Intelligence & Job-Match Optimization Platform**
 
