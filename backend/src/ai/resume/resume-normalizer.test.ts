@@ -23,10 +23,18 @@ describe('Resume Entity Normalizer', () => {
   });
 
   it('normalizes skill names and removes duplicates case-insensitively', () => {
-    const skills = normalizeSkills(['React', 'react', 'React.js', 'Node', 'nodejs', 'Node.js']);
+    const skills = normalizeSkills(['React', 'react', 'React.js', 'React JS', 'reactjs', 'Node', 'nodejs', 'Node.js', 'Node JS']);
     expect(skills).toContain('React.js');
     expect(skills).toContain('Node.js');
     expect(skills.length).toBe(2);
+  });
+
+  it('normalizes space-separated framework aliases consistently', () => {
+    const skills = normalizeSkills(['Express JS', 'express.js', 'Vue JS', 'vue.js', 'Next JS', 'nextjs']);
+    expect(skills).toContain('Express.js');
+    expect(skills).toContain('Vue.js');
+    expect(skills).toContain('Next.js');
+    expect(skills.length).toBe(3);
   });
 
   it('deduplicates general strings', () => {

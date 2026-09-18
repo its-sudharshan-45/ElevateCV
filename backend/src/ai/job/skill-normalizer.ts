@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Skill Normalization for Job-Specific ATS Matching
  *
  * Normalizes skill names before comparison so that "ReactJS", "React.js",
@@ -22,10 +22,12 @@ const SKILL_ALIASES: Record<string, string> = {
   'react': 'react',
   'reactjs': 'react',
   'react.js': 'react',
+  'react js': 'react',
   // Vue
   'vue': 'vue',
   'vuejs': 'vue',
   'vue.js': 'vue',
+  'vue js': 'vue',
   // Svelte
   'svelte': 'svelte',
   'sveltejs': 'svelte',
@@ -36,6 +38,7 @@ const SKILL_ALIASES: Record<string, string> = {
   'next': 'next.js',
   'nextjs': 'next.js',
   'next.js': 'next.js',
+  'next js': 'next.js',
   // Nuxt
   'nuxt': 'nuxt',
   'nuxtjs': 'nuxt',
@@ -43,10 +46,12 @@ const SKILL_ALIASES: Record<string, string> = {
   'node': 'node.js',
   'nodejs': 'node.js',
   'node.js': 'node.js',
+  'node js': 'node.js',
   // Express
   'express': 'express',
   'expressjs': 'express',
   'express.js': 'express',
+  'express js': 'express',
   // NestJS
   'nest': 'nestjs',
   'nestjs': 'nestjs',

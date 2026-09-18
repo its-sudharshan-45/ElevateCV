@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Job Description Parser
  *
  * Extracts structured JobRequirements from a raw job description string
@@ -55,11 +55,11 @@ const STOPWORDS = new Set([
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Split JD into logical lines, stripping bullets and extra whitespace */
+/** Split JD into logical lines, stripping bullets, markdown, colons, and extra whitespace */
 function splitLines(text: string): string[] {
   return text
     .split(/\r?\n/)
-    .map((l) => l.replace(/^[\s•\-*●▪▶→]+/, '').trim())
+    .map((l) => l.replace(/^[\s•\-*●▪▶→#]+/, '').replace(/[:\-#*]+$/, '').trim())
     .filter((l) => l.length > 0);
 }
 
@@ -84,8 +84,8 @@ function extractSection(lines: string[], startIdx: number): string[] {
 
 /** Extract years from experience requirement strings */
 function parseYearsFromLine(line: string): number | null {
-  const m = line.match(/(\d+)\s*\+?\s*(?:to\s*\d+\s*)?years?/i);
-  return m ? parseInt(m[1], 10) : null;
+  const m = line.match(/(?:(\d+)\s*[-to]+\s*\d+|(\d+))\s*\+?\s*(?:years?|yrs?\.?)/i);
+  return m ? parseInt(m[1] || m[2], 10) : null;
 }
 
 /** Extract skills mentioned in a block of text from KNOWN_TECH_SKILLS */
@@ -213,7 +213,7 @@ export function parseJobDescription(jdText: string, title?: string): JobRequirem
   const expIdx = findSectionStart(lines, EXPERIENCE_HEADINGS);
   const expLines = expIdx >= 0 ? extractSection(lines, expIdx) : [];
   // Also scan full text for year patterns
-  const yearPattern = /\b(\d+)\s*\+?\s*(?:to\s*\d+\s*)?years?\s+(?:of\s+)?(?:professional\s+|relevant\s+|work\s+)?experience\b/gi;
+  const yearPattern = /\b(?:(\d+)\s*[-to]+\s*\d+|(\d+))\s*\+?\s*(?:years?|yrs?\.?)\s+(?:of\s+)?(?:professional\s+|relevant\s+|work\s+)?experience\b/gi;
   const expFromText = Array.from(jdText.matchAll(yearPattern)).map((m) => m[0].trim());
   const experienceRequirements = Array.from(
     new Set([...expLines.filter((l) => parseYearsFromLine(l) !== null), ...expFromText]),

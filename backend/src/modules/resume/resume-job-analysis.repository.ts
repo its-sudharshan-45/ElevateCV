@@ -1,4 +1,4 @@
-﻿import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { getSupabaseAdmin } from '../../config/supabase.js';
 import { AppError } from '../../utils/errors.js';
 import type { JobMatchAnalysis, JobRequirements } from '../../ai/job/job-types.js';
@@ -75,6 +75,26 @@ export class ResumeJobAnalysisRepository {
 
     if (error) {
       throw new AppError('Failed to retrieve job analysis', 500, 'DATABASE_ERROR');
+    }
+
+    return data as ResumeJobAnalysisRecord | null;
+  }
+
+  async findLatestByResumeForUser(
+    resumeId: string,
+    userId: string,
+  ): Promise<ResumeJobAnalysisRecord | null> {
+    const { data, error } = await getSupabaseAdmin()
+      .from('resume_job_analysis')
+      .select('*')
+      .eq('resume_id', resumeId)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new AppError('Failed to retrieve latest job analysis', 500, 'DATABASE_ERROR');
     }
 
     return data as ResumeJobAnalysisRecord | null;

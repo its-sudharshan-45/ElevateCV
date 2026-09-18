@@ -2,6 +2,7 @@ import { authenticatedApiFetch } from '@/lib/api/client';
 import type {
   AnalyzeJobResponse,
   JobAnalysisListResponse,
+  OptimizeResumeResponse,
   ResumeDetailResponse,
   ResumeListResponse,
 } from '@/features/resume/types/resume';
@@ -54,3 +55,15 @@ export async function listJobAnalyses(resumeId: string) {
   return authenticatedApiFetch<JobAnalysisListResponse>(`/resumes/${resumeId}/job-analyses`);
 }
 
+export async function getLatestJobAnalysis(resumeId: string) {
+  return authenticatedApiFetch<{ analysis: AnalyzeJobResponse | null }>(
+    `/resumes/${resumeId}/job-analyses/latest`,
+  );
+}
+
+export async function optimizeResume(resumeId: string, analysisId: string) {
+  return authenticatedApiFetch<OptimizeResumeResponse>(`/resumes/${resumeId}/optimize`, {
+    method: 'POST',
+    body: JSON.stringify({ analysisId }),
+  });
+}

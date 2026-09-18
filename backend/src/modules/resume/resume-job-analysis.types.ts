@@ -1,8 +1,9 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 import { JD_MAX_LENGTH_CHARS, JD_MIN_LENGTH_CHARS } from '../../ai/job/job-types.js';
+import type { OptimizationResult } from '../../ai/optimization/optimization-types.js';
 
 // ---------------------------------------------------------------------------
-// Zod validation schema for incoming request
+// Zod validation schema for incoming analyze-job request
 // ---------------------------------------------------------------------------
 export const analyzeJobSchema = z.object({
   resumeId: z.string().uuid('resumeId must be a valid UUID'),
@@ -14,6 +15,20 @@ export const analyzeJobSchema = z.object({
 });
 
 export type AnalyzeJobRequest = z.infer<typeof analyzeJobSchema>;
+
+// ---------------------------------------------------------------------------
+// Zod validation schema for optimization request
+// ---------------------------------------------------------------------------
+export const optimizeResumeSchema = z.object({
+  analysisId: z.string().uuid('analysisId must be a valid UUID'),
+});
+
+export type OptimizeResumeRequest = z.infer<typeof optimizeResumeSchema>;
+
+export interface OptimizeResumeResponse {
+  success: true;
+  data: OptimizationResult;
+}
 
 // ---------------------------------------------------------------------------
 // Database record

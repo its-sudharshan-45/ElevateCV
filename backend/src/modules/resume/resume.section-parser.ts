@@ -12,15 +12,23 @@ const SECTION_ORDER: ResumeSectionKey[] = [
   'certifications',
 ];
 
+function cleanHeadingCandidate(line: string): string {
+  return line
+    .trim()
+    .replace(/^[\s•\-*#_`~>|]+/, '')
+    .replace(/[:\-#*_`~>|]+$/g, '')
+    .trim();
+}
+
 function detectSectionKey(line: string): ResumeSectionKey | null {
-  const normalized = line.trim().replace(/[:\-#*]+$/g, '').trim();
+  const normalized = cleanHeadingCandidate(line);
   if (!normalized || normalized.length > 80) {
     return null;
   }
 
   for (const key of SECTION_ORDER) {
     const patterns = SECTION_HEADING_PATTERNS[key];
-    if (patterns.some((pattern) => pattern.test(normalized))) {
+    if (patterns?.some((pattern) => pattern.test(normalized))) {
       return key;
     }
   }
@@ -29,17 +37,17 @@ function detectSectionKey(line: string): ResumeSectionKey | null {
 }
 
 function isLikelyHeading(line: string): boolean {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.length > 80) {
+  const cleaned = cleanHeadingCandidate(line);
+  if (!cleaned || cleaned.length > 80) {
     return false;
   }
 
-  if (detectSectionKey(trimmed)) {
+  if (detectSectionKey(line)) {
     return true;
   }
 
-  const alphaChars = trimmed.replace(/[^A-Za-z]/g, '');
-  if (alphaChars.length >= 3 && trimmed === trimmed.toUpperCase()) {
+  const alphaChars = cleaned.replace(/[^A-Za-z]/g, '');
+  if (alphaChars.length >= 3 && cleaned === cleaned.toUpperCase() && !cleaned.includes('.')) {
     return true;
   }
 

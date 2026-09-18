@@ -19,9 +19,11 @@ interface CacheEntry<T> {
 export class TtlCache {
   private readonly store = new Map<string, CacheEntry<unknown>>();
   private readonly ttlMs: number;
+  private readonly maxEntries: number;
 
-  constructor(ttlMs = 60_000) {
+  constructor(ttlMs = 60_000, maxEntries = 10_000) {
     this.ttlMs = ttlMs;
+    this.maxEntries = maxEntries;
   }
 
   get<T>(key: string): T | undefined {
@@ -35,10 +37,34 @@ export class TtlCache {
   }
 
   set<T>(key: string, value: T, ttlMs?: number): void {
+    if (this.store.size >= this.maxEntries) {
+      this.pruneExpired();
+      if (this.store.size >= this.maxEntries) {
+        // Evict oldest inserted entry
+        const oldestKey = this.store.keys().next().value;
+        if (oldestKey !== undefined) {
+          this.store.delete(oldestKey);
+        }
+      }
+    }
+
     this.store.set(key, {
       value,
       expiresAt: Date.now() + (ttlMs ?? this.ttlMs),
     });
+  }
+
+  /** Remove all expired entries from the store. */
+  pruneExpired(): number {
+    const now = Date.now();
+    let pruned = 0;
+    for (const [key, entry] of this.store.entries()) {
+      if (entry.expiresAt <= now) {
+        this.store.delete(key);
+        pruned++;
+      }
+    }
+    return pruned;
   }
 
   /** Remove a specific cache entry. */

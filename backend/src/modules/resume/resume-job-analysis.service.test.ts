@@ -67,6 +67,30 @@ describe('ResumeJobAnalysisService', () => {
           createdAt: new Date().toISOString(),
         },
       ]),
+      findLatestByResumeForUser: vi.fn().mockResolvedValue({
+        id: 'analysis-123',
+        user_id: userId,
+        resume_id: resumeId,
+        match_score: 85,
+        analysis_result: {
+          matchScore: 85,
+          category: 'Strong Match',
+          overview: 'Strong candidate profile',
+          breakdown: { skills: 85, experience: 80, responsibilities: 75, keywords: 70, education: 90, projects: 80 },
+          matchedSkills: ['React', 'Node.js'],
+          missingRequiredSkills: [],
+          missingPreferredSkills: [],
+          skillDetail: { matchedRequired: ['React', 'Node.js'], missingRequired: [], matchedPreferred: [], missingPreferred: [], scorePercent: 100 },
+          experienceDetail: { requiredYears: null, detectedProfessionalYears: 2, detectedInternshipMonths: 0, detectedProjectCount: 1, matchLevel: 'strong', scorePercent: 80, note: '' },
+          educationDetail: { required: [], detected: [], matchLevel: 'strong', scorePercent: 100 },
+          responsibilityDetail: { matched: [], unmatched: [], scorePercent: 80 },
+          keywordDetail: { found: [], missing: [], scorePercent: 80 },
+          projectDetail: { relevantProjects: [], scorePercent: 50 },
+          strengths: ['Strong skills'],
+          recommendations: [],
+        },
+        created_at: new Date().toISOString(),
+      }),
     } as unknown as ResumeJobAnalysisRepository;
 
     const service = new ResumeJobAnalysisService(resumeRepo, jobAnalysisRepo);
@@ -121,5 +145,25 @@ describe('ResumeJobAnalysisService', () => {
     expect(list.length).toBe(1);
     expect(list[0].id).toBe('analysis-123');
     expect(jobAnalysisRepo.listByResumeForUser).toHaveBeenCalledWith(resumeId, userId);
+  });
+
+  it('retrieves the latest job analysis for a saved resume', async () => {
+    const { service, jobAnalysisRepo } = createService();
+
+    const result = await service.getLatestJobAnalysis(userId, resumeId);
+    expect(result).not.toBeNull();
+    expect(result?.success).toBe(true);
+    expect(result?.analysisId).toBe('analysis-123');
+    expect(result?.data.matchScore).toBe(85);
+    expect(jobAnalysisRepo.findLatestByResumeForUser).toHaveBeenCalledWith(resumeId, userId);
+  });
+
+  it('preserves user data isolation by throwing 404 when unauthorized user accesses another users resume', async () => {
+    const { service, resumeRepo } = createService();
+    // Simulate User B attempting to access User A's resume
+    vi.mocked(resumeRepo.findByIdForUser).mockResolvedValue(null);
+
+    await expect(service.getLatestJobAnalysis('other-user-456', resumeId)).rejects.toThrow('Resume not found');
+    await expect(service.listJobAnalyses('other-user-456', resumeId)).rejects.toThrow('Resume not found');
   });
 });

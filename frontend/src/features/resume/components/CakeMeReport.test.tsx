@@ -213,4 +213,43 @@ describe('CakeMeReport', () => {
     expect(screen.getByText('React')).toBeDefined();
     expect(screen.getByText('TypeScript')).toBeDefined();
   });
+
+  it('renders ATS Component Breakdown with backend weights and scores', () => {
+    render(<CakeMeReport analysis={mockAnalysis} resume={mockResume as ResumeDetail} />);
+
+    expect(screen.getByText(/ATS Component Breakdown/i)).toBeDefined();
+    expect(screen.getByText('40%')).toBeDefined(); // Skills weight
+    expect(screen.getByText('20%')).toBeDefined(); // Experience weight
+    expect(screen.getByText('15%')).toBeDefined(); // Responsibilities weight
+    expect(screen.getByText('5%')).toBeDefined();  // Education weight
+    expect(screen.getByText('85%')).toBeDefined(); // Skills score
+    expect(screen.getByText('90%')).toBeDefined(); // Education score
+  });
+
+  it('renders candidate contact info from structuredResume.personal', () => {
+    const resumeWithPersonal = {
+      ...mockResume,
+      structuredData: {
+        ...mockResume.structuredData!,
+        structuredResume: {
+          personal: {
+            name: 'Alex Johnson',
+            email: 'alex.johnson@example.com',
+            phone: '555-0199',
+          },
+          skills: ['React'],
+          experience: [],
+          education: [],
+          projects: [],
+          certifications: [],
+          languages: [],
+        },
+      },
+    };
+
+    render(<CakeMeReport analysis={mockAnalysis} resume={resumeWithPersonal as ResumeDetail} />);
+    expect(screen.getByText('Alex Johnson')).toBeDefined();
+    expect(screen.getByText('alex.johnson@example.com')).toBeDefined();
+    expect(screen.getByText('555-0199')).toBeDefined();
+  });
 });

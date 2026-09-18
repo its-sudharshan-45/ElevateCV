@@ -49,6 +49,7 @@ export interface StructuredResume {
   projects: ProjectItem[];
   certifications: CertificationItem[];
   languages: string[];
+  achievements?: string[];
 }
 
 export interface RawNEREntity {

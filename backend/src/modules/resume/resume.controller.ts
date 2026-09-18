@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { AppError } from '../../utils/errors.js';
 import { getRouteParam } from '../../utils/route-params.js';
 import { resumeService } from './resume.service.js';
+import { resumeJobAnalysisService } from './resume-job-analysis.service.js';
+import { resumeOptimizationService } from './resume-optimization.service.js';
 
 export async function uploadResume(req: Request, res: Response): Promise<void> {
   if (!req.user) {
@@ -53,7 +55,6 @@ export async function analyzeResumeForJob(req: Request, res: Response): Promise<
     throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
   }
 
-  const { resumeJobAnalysisService } = await import('./resume-job-analysis.service.js');
   const resumeId = getRouteParam(req.params, 'id');
   const { jobTitle, jobDescription } = req.body as { jobTitle?: string; jobDescription: string };
 
@@ -71,10 +72,32 @@ export async function listJobAnalyses(req: Request, res: Response): Promise<void
     throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
   }
 
-  const { resumeJobAnalysisService } = await import('./resume-job-analysis.service.js');
   const resumeId = getRouteParam(req.params, 'id');
   const analyses = await resumeJobAnalysisService.listJobAnalyses(req.user.id, resumeId);
 
   res.status(200).json({ analyses });
 }
 
+export async function getLatestJobAnalysis(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const resumeId = getRouteParam(req.params, 'id');
+  const analysis = await resumeJobAnalysisService.getLatestJobAnalysis(req.user.id, resumeId);
+
+  res.status(200).json({ analysis });
+}
+
+export async function optimizeResume(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const resumeId = getRouteParam(req.params, 'id');
+  const { analysisId } = req.body as { analysisId: string };
+
+  const result = await resumeOptimizationService.optimizeResume(req.user.id, resumeId, analysisId);
+
+  res.status(200).json({ success: true, data: result });
+}

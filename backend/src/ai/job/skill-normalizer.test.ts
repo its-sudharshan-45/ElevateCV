@@ -1,4 +1,4 @@
-﻿// cspell:ignore reactjs vuejs nodejs
+// cspell:ignore reactjs vuejs nodejs
 import { describe, expect, it } from 'vitest';
 import { findMatchingSkills, normalizeSkill, skillsMatch } from './skill-normalizer.js';
 
@@ -76,6 +76,14 @@ describe('findMatchingSkills', () => {
   it('handles alias normalization across both lists', () => {
     const result = findMatchingSkills(['Postgres'], ['PostgreSQL']);
     expect(result.matched).toContain('PostgreSQL');
+    expect(result.missing).toHaveLength(0);
+  });
+
+  it('matches space-separated aliases like React JS and Node JS', () => {
+    const result = findMatchingSkills(['React JS', 'Node JS', 'Express JS'], ['React', 'Node.js', 'Express']);
+    expect(result.matched).toContain('React');
+    expect(result.matched).toContain('Node.js');
+    expect(result.matched).toContain('Express');
     expect(result.missing).toHaveLength(0);
   });
 });

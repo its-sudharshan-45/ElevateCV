@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FormMessage } from '@/components/ui/form-message';
 import {
   analyzeResumeForJob,
   deleteResume,
+  getLatestJobAnalysis,
   getResume,
   listJobAnalyses,
   listResumes,
@@ -30,6 +31,9 @@ import {
 } from 'lucide-react';
 
 export function ResumePage() {
+  const [searchParams] = useSearchParams();
+  const queryResumeId = searchParams.get('resumeId');
+
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [selectedResume, setSelectedResume] = useState<ResumeDetail | null>(null);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
@@ -42,6 +46,7 @@ export function ResumePage() {
 
   // Job Match analysis result state
   const [jobMatchAnalysis, setJobMatchAnalysis] = useState<JobMatchAnalysis | null>(null);
+  const [jobAnalysisId, setJobAnalysisId] = useState<string | null>(null);
   const [showReport, setShowReport] = useState<boolean>(false);
 
   const loadResumes = useCallback(async (autoSelect = false) => {
@@ -68,9 +73,13 @@ export function ResumePage() {
       );
       setResumes(enrichedResumes);
 
-      // Auto-select the first resume if none is selected yet so user immediately sees their analyzed resume
-      if (enrichedResumes.length > 0 && (autoSelect || !selectedResumeId)) {
-        void handleSelect(enrichedResumes[0].id);
+      // Auto-select targeted resume if query param matches, else first resume if none selected yet
+      if (enrichedResumes.length > 0) {
+        if (queryResumeId && enrichedResumes.some((r) => r.id === queryResumeId)) {
+          void handleSelect(queryResumeId);
+        } else if (autoSelect || !selectedResumeId) {
+          void handleSelect(enrichedResumes[0].id);
+        }
       }
     } catch (loadError) {
       console.error('Failed to load resumes:', loadError);
@@ -82,7 +91,7 @@ export function ResumePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedResumeId]);
+  }, [selectedResumeId, queryResumeId]);
 
   useEffect(() => {
     void loadResumes(true);
@@ -92,15 +101,19 @@ export function ResumePage() {
   async function handleSelect(resumeId: string) {
     setSelectedResumeId(resumeId);
     setError(null);
+    setJobMatchAnalysis(null);
+    setJobAnalysisId(null);
 
     try {
       const data = await getResume(resumeId);
       let matchScore = data.resume.score;
 
       try {
-        const analysesData = await listJobAnalyses(resumeId);
-        if (analysesData.analyses && analysesData.analyses.length > 0) {
-          matchScore = analysesData.analyses[0].matchScore;
+        const latestData = await getLatestJobAnalysis(resumeId);
+        if (latestData?.analysis?.data) {
+          setJobMatchAnalysis(latestData.analysis.data);
+          setJobAnalysisId(latestData.analysis.analysisId);
+          matchScore = latestData.analysis.data.matchScore;
           setResumes((current) =>
             current.map((r) =>
               r.id === resumeId ? { ...r, score: matchScore } : r,
@@ -108,11 +121,7 @@ export function ResumePage() {
           );
         }
       } catch {
-        // keep fallback
-      }
-
-      if (data.resume.analysisResult) {
-        setJobMatchAnalysis(data.resume.analysisResult as unknown as JobMatchAnalysis);
+        setJobMatchAnalysis(null);
       }
 
       setSelectedResume({
@@ -124,6 +133,7 @@ export function ResumePage() {
     } catch (selectError) {
       setSelectedResume(null);
       setShowReport(false);
+      setJobMatchAnalysis(null);
       setError(
         selectError instanceof ApiClientError
           ? selectError.message
@@ -142,6 +152,7 @@ export function ResumePage() {
     // Clear any previous report while running a new analysis
     setShowReport(false);
     setJobMatchAnalysis(null);
+    setJobAnalysisId(null);
 
     try {
       // 1. Upload resume
@@ -163,6 +174,7 @@ export function ResumePage() {
 
       const matchedScore = jobMatchRes.data.matchScore;
       setJobMatchAnalysis(jobMatchRes.data);
+      setJobAnalysisId(jobMatchRes.analysisId);
 
       const updatedResume = {
         ...processed.resume,
@@ -203,6 +215,7 @@ export function ResumePage() {
     setSuccessMessage(null);
     setShowReport(false);
     setJobMatchAnalysis(null);
+    setJobAnalysisId(null);
 
     try {
       // 1. Ensure resume is processed before running job analysis
@@ -222,6 +235,7 @@ export function ResumePage() {
 
       const matchedScore = jobMatchRes.data.matchScore;
       setJobMatchAnalysis(jobMatchRes.data);
+      setJobAnalysisId(jobMatchRes.analysisId);
 
       const updatedResume = {
         ...activeResume,
@@ -272,6 +286,7 @@ export function ResumePage() {
         setSelectedResumeId(null);
         setSelectedResume(null);
         setJobMatchAnalysis(null);
+        setJobAnalysisId(null);
         setShowReport(false);
       }
       setSuccessMessage('Resume deleted successfully.');
@@ -369,6 +384,7 @@ export function ResumePage() {
             <CakeMeReport
               analysis={jobMatchAnalysis ?? undefined}
               resume={selectedResume}
+              analysisId={jobAnalysisId ?? undefined}
             />
           </div>
 

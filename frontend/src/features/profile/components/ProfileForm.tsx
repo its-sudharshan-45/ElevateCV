@@ -17,6 +17,7 @@ import {
 } from '@/features/profile/schemas';
 import { getFieldErrors } from '@/features/auth/utils';
 import { ApiClientError, authenticatedApiFetch } from '@/lib/api/client';
+import { uploadResume } from '@/features/resume/api/resume.api';
 import { createClient } from '@/lib/supabase/client';
 import {
   CURRENT_STATUS_OPTIONS,
@@ -442,12 +443,7 @@ export function ProfileForm() {
       if (resumeFile) {
         setResumeError(undefined);
         try {
-          const formData = new FormData();
-          formData.append('file', resumeFile);
-          await authenticatedApiFetch('/resume', {
-            method: 'POST',
-            body: formData,
-          });
+          await uploadResume(resumeFile);
           setResumeFile(null);
         } catch (err) {
           setResumeError(

@@ -189,15 +189,22 @@ export function normalizeSkills(skills: string[]): string[] {
 
     // Alias map for common skills
     let canonical = cleaned;
-    if (lower === 'react' || lower === 'reactjs' || lower === 'react.js') canonical = 'React.js';
-    else if (lower === 'node' || lower === 'nodejs' || lower === 'node.js') canonical = 'Node.js';
+    if (lower === 'react' || lower === 'reactjs' || lower === 'react.js' || lower === 'react js') canonical = 'React.js';
+    else if (lower === 'node' || lower === 'nodejs' || lower === 'node.js' || lower === 'node js') canonical = 'Node.js';
     else if (lower === 'js' || lower === 'javascript') canonical = 'JavaScript';
     else if (lower === 'ts' || lower === 'typescript') canonical = 'TypeScript';
     else if (lower === 'py' || lower === 'python') canonical = 'Python';
     else if (lower === 'aws' || lower === 'amazon web services') canonical = 'AWS';
     else if (lower === 'postgres' || lower === 'postgresql') canonical = 'PostgreSQL';
     else if (lower === 'mongo' || lower === 'mongodb') canonical = 'MongoDB';
-    else if (lower === 'express' || lower === 'expressjs' || lower === 'express.js') canonical = 'Express.js';
+    else if (lower === 'express' || lower === 'expressjs' || lower === 'express.js' || lower === 'express js') canonical = 'Express.js';
+    else if (lower === 'vue' || lower === 'vuejs' || lower === 'vue.js' || lower === 'vue js') canonical = 'Vue.js';
+    else if (lower === 'next' || lower === 'nextjs' || lower === 'next.js' || lower === 'next js') canonical = 'Next.js';
+    else if (lower === 'c++' || lower === 'cpp') canonical = 'C++';
+    else if (lower === 'c#' || lower === 'csharp') canonical = 'C#';
+    else if (lower === 'go' || lower === 'golang') canonical = 'Go';
+    else if (lower === 'k8s' || lower === 'kubernetes') canonical = 'Kubernetes';
+    else if (lower === 'ci/cd' || lower === 'cicd' || lower === 'ci cd' || lower === 'ci-cd') canonical = 'CI/CD';
 
     const key = canonical.toLowerCase();
     if (!map.has(key) || canonical.includes('.')) {

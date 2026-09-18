@@ -181,3 +181,37 @@ export interface JobAnalysisListResponse {
   analyses: JobAnalysisListItem[];
 }
 
+
+// ---------------------------------------------------------------------------
+// AI Resume Optimization Types
+// ---------------------------------------------------------------------------
+
+export interface OptimizedSection {
+  key: 'summary' | 'experience' | 'projects' | 'skills';
+  original: string;
+  improved: string;
+  reason: string;
+}
+
+export interface OptimizationSuggestion {
+  priority: 'high' | 'medium' | 'low';
+  text: string;
+  impact: string;
+}
+
+export interface KeywordImprovement {
+  keyword: string;
+  suggestion: string;
+}
+
+export interface OptimizationResult {
+  optimizedSections: OptimizedSection[];
+  suggestions: OptimizationSuggestion[];
+  keywordImprovements: KeywordImprovement[];
+  warnings: string[];
+}
+
+export interface OptimizeResumeResponse {
+  success: boolean;
+  data: OptimizationResult;
+}

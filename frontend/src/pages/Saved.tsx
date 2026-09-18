@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { Bookmark, FileText, ArrowRight, Zap, Loader2 } from 'lucide-react';
+import { Bookmark, FileText, ArrowRight, Zap, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { listResumes } from '@/services/resume.service';
-import { listJobAnalyses } from '@/services/ats.service';
+import { listResumes, listJobAnalyses } from '@/features/resume/api/resume.api';
 import type { ResumeListItem } from '@/features/resume/types/resume';
 import type { JobAnalysisListItem } from '@/features/resume/types/resume';
 
@@ -120,12 +119,12 @@ export function SavedPage() {
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Loader2 className="w-10 h-10 text-slate-300 mb-3" />
+            <AlertCircle className="w-10 h-10 text-rose-500 mb-3" />
             <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{error}</p>
             <button
               onClick={() => void fetchSavedAnalyses()}
               type="button"
-              className="mt-3 text-xs font-bold text-[#6E44FF] hover:underline"
+              className="mt-3 text-xs font-bold text-[#6E44FF] hover:underline cursor-pointer"
             >
               Retry
             </button>
@@ -177,7 +176,7 @@ export function SavedPage() {
                     Analyzed {formatRelativeDate(item.createdAt)}
                   </span>
                   <Link
-                    to="/profile/resumes"
+                    to={`/profile/resumes?resumeId=${encodeURIComponent(item.resumeId)}`}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#6E44FF] text-white font-bold text-xs shadow-2xs hover:bg-purple-700 transition-colors"
                   >
                     <span>View Analysis</span>

@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { matchResumeToJob } from './resume-job-matcher.js';
 import type { StructuredResume } from '../resume/resume-types.js';
 import type { JobRequirements } from './job-types.js';
@@ -165,5 +165,58 @@ describe('matchResumeToJob', () => {
     const result = matchResumeToJob(tinyResume, SAMPLE_JD);
     expect(result.matchScore).toBeGreaterThanOrEqual(0);
     expect(result.matchScore).toBeLessThanOrEqual(100);
+  });
+
+  it('strictly preserves the ATS scoring formula weights in breakdown', () => {
+    const result = matchResumeToJob(SAMPLE_RESUME, SAMPLE_JD);
+    const { breakdown } = result;
+
+    // Verify all 6 components exist in breakdown
+    expect(typeof breakdown.skills).toBe('number');
+    expect(typeof breakdown.experience).toBe('number');
+    expect(typeof breakdown.responsibilities).toBe('number');
+    expect(typeof breakdown.keywords).toBe('number');
+    expect(typeof breakdown.projects).toBe('number');
+    expect(typeof breakdown.education).toBe('number');
+
+    // Verify aggregate score formula: 0.4*skills + 0.2*exp + 0.15*resp + 0.1*kw + 0.1*proj + 0.05*edu
+    const expectedScore = Math.round(
+      breakdown.skills * 0.4 +
+      breakdown.experience * 0.2 +
+      breakdown.responsibilities * 0.15 +
+      breakdown.keywords * 0.1 +
+      breakdown.projects * 0.1 +
+      breakdown.education * 0.05
+    );
+
+    expect(result.matchScore).toBe(expectedScore);
+  });
+
+  it('guarantees identical inputs produce identical matchScore and breakdown (consistency)', () => {
+    const run1 = matchResumeToJob(SAMPLE_RESUME, SAMPLE_JD);
+    const run2 = matchResumeToJob(SAMPLE_RESUME, SAMPLE_JD);
+
+    expect(run1.matchScore).toBe(run2.matchScore);
+    expect(run1.breakdown).toEqual(run2.breakdown);
+    expect(run1.matchedSkills).toEqual(run2.matchedSkills);
+    expect(run1.missingRequiredSkills).toEqual(run2.missingRequiredSkills);
+    expect(run1.recommendations).toEqual(run2.recommendations);
+  });
+
+  it('produces traceable education recommendation when required education is missing', () => {
+    const noEduResume: StructuredResume = {
+      ...SAMPLE_RESUME,
+      education: [],
+    };
+    const jdWithDegree: JobRequirements = {
+      ...SAMPLE_JD,
+      educationRequirements: ["Master's in Software Engineering"],
+    };
+
+    const result = matchResumeToJob(noEduResume, jdWithDegree);
+    const hasEduRec = result.recommendations.some(
+      (r) => r.text.toLowerCase().includes('education') || r.text.toLowerCase().includes('degree'),
+    );
+    expect(hasEduRec).toBe(true);
   });
 });

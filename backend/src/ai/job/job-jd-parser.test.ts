@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parseJobDescription } from './job-jd-parser.js';
 
 const FULL_STACK_JD = `
@@ -62,10 +62,10 @@ describe('parseJobDescription', () => {
   it('extracts education requirements', () => {
     const req = parseJobDescription(FULL_STACK_JD);
     expect(req.educationRequirements.length).toBeGreaterThan(0);
-    const hasBackelor = req.educationRequirements.some((e) =>
+    const hasBachelor = req.educationRequirements.some((e) =>
       e.toLowerCase().includes('bachelor'),
     );
-    expect(hasBackelor).toBe(true);
+    expect(hasBachelor).toBe(true);
   });
 
   it('extracts responsibilities', () => {
@@ -99,5 +99,34 @@ describe('parseJobDescription', () => {
     const req = parseJobDescription(plain);
     const lowerReq = req.requiredSkills.map((s) => s.toLowerCase());
     expect(lowerReq.some((s) => s.includes('react'))).toBe(true);
+  });
+
+  it('deduplicates skills when repeated across sections in JD', () => {
+    const repeated = `
+    Required Skills: React, TypeScript, React
+    Must Have: TypeScript, React
+    `;
+    const req = parseJobDescription(repeated);
+    const reactCount = req.requiredSkills.filter((s) => s.toLowerCase() === 'react').length;
+    expect(reactCount).toBe(1);
+  });
+
+  it('extracts experience requirement with yrs abbreviation and range', () => {
+    const jd = 'Seeking software developer with 5+ yrs of professional experience in backend systems.';
+    const req = parseJobDescription(jd);
+    expect(req.experienceRequirements.some((e) => e.includes('5'))).toBe(true);
+  });
+
+  it('handles JD containing only responsibilities without crashing', () => {
+    const jd = `
+    Responsibilities:
+    Design robust data architectures.
+    Mentor junior engineers.
+    Participate in agile sprint planning.
+    `;
+    const req = parseJobDescription(jd);
+    expect(req.responsibilities.length).toBeGreaterThan(0);
+    expect(req.requiredSkills).toEqual([]);
+    expect(req.preferredSkills).toEqual([]);
   });
 });

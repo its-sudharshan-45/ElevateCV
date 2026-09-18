@@ -19,8 +19,9 @@ export class InferenceEngine {
     const timeoutMs = options?.timeoutMs || 30_000;
     const startTime = Date.now();
 
+    let timer: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      timer = setTimeout(() => {
         reject(new ModelTimeoutError(handle.id, timeoutMs));
       }, timeoutMs);
     });
@@ -44,6 +45,10 @@ export class InferenceEngine {
     } catch (error) {
       logger.error({ modelId: handle.id, error }, 'Inference execution failed');
       throw error;
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
     }
   }
 

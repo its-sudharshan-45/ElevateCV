@@ -30,6 +30,7 @@ import { findMatchingSkills, normalizeSkill, skillsMatch } from './skill-normali
 // ---------------------------------------------------------------------------
 
 function clamp(value: number): number {
+  if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
@@ -346,6 +347,8 @@ function buildRecommendations(
   skillDetail: SkillMatchDetail,
   keywordDetail: KeywordMatchDetail,
   respDetail: ResponsibilityMatchDetail,
+  eduDetail: EducationMatchDetail,
+  projDetail: ProjectMatchDetail,
 ): JobMatchAnalysis['recommendations'] {
   const recs: JobMatchAnalysis['recommendations'] = [];
 
@@ -364,6 +367,15 @@ function buildRecommendations(
       priority: 'high',
       text: `Your experience section does not clearly demonstrate: ${respDetail.unmatched.slice(0, 2).join('; ')}. Add specific examples if applicable.`,
       impact: '+8 ATS points',
+    });
+  }
+
+  // High priority — education requirement
+  if (eduDetail.matchLevel === 'none' && eduDetail.required.length > 0) {
+    recs.push({
+      priority: 'high',
+      text: `Education requirement noted in job posting (${eduDetail.required.slice(0, 2).join('; ')}). Ensure relevant degree or coursework is explicitly documented.`,
+      impact: '+5 ATS points',
     });
   }
 
@@ -386,7 +398,16 @@ function buildRecommendations(
     });
   }
 
-  // Low priority — general improvements
+  // Medium priority — project evidence
+  if (projDetail.relevantProjects.length === 0 && breakdown.projects < 50) {
+    recs.push({
+      priority: 'medium',
+      text: 'Add practical project descriptions with technologies used to showcase applied technical competency.',
+      impact: '+8 ATS points',
+    });
+  }
+
+  // Low priority — general experience improvements
   if (breakdown.experience < 60) {
     recs.push({
       priority: 'low',
@@ -439,7 +460,14 @@ export function matchResumeToJob(
   const category = getMatchCategory(matchScore);
 
   const strengths = buildStrengths(breakdown, skillDetail, experienceDetail, educationDetail, projectDetail);
-  const recommendations = buildRecommendations(breakdown, skillDetail, keywordDetail, responsibilityDetail);
+  const recommendations = buildRecommendations(
+    breakdown,
+    skillDetail,
+    keywordDetail,
+    responsibilityDetail,
+    educationDetail,
+    projectDetail,
+  );
 
   const overview = strengths.length > 0
     ? `Your resume demonstrates ${strengths[0].toLowerCase().replace(/^your\s+/i, '')}. ${recommendations.length > 0 ? recommendations[0].text : ''}`

@@ -8,26 +8,36 @@ import { AppError } from '../../utils/errors.js';
  */
 export async function extractResumeText(buffer: Buffer, mimeType: string): Promise<string> {
   if (mimeType === 'text/plain') {
-    const text = buffer.toString('utf8').trim();
-    if (!text) {
-      throw new AppError('Resume file contains no readable text', 400, 'VALIDATION_ERROR');
+    const raw = buffer.toString('utf8');
+    const normalized = normalizeExtractedText(raw);
+    if (!normalized || normalized.length < 10) {
+      throw new AppError('Resume file contains no readable text or is too short', 400, 'VALIDATION_ERROR');
     }
-    return normalizeExtractedText(text);
+    return normalized;
   }
 
   if (mimeType === 'application/pdf') {
     try {
       const parsed = await pdfParse(buffer);
       const text = parsed.text?.trim() ?? '';
-      if (!text) {
-        throw new AppError('Unable to extract text from the PDF resume', 400, 'VALIDATION_ERROR');
+      const normalized = normalizeExtractedText(text);
+      if (!normalized || normalized.length < 10) {
+        throw new AppError(
+          'Unable to extract text from the PDF resume. The file may be image-only, scanned, or empty.',
+          400,
+          'VALIDATION_ERROR',
+        );
       }
-      return normalizeExtractedText(text);
+      return normalized;
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
       }
-      throw new AppError('Failed to extract text from resume file', 500, 'INTERNAL_SERVER_ERROR');
+      throw new AppError(
+        'Failed to extract text from PDF resume: file may be corrupted or unreadable',
+        400,
+        'VALIDATION_ERROR',
+      );
     }
   }
 
@@ -44,10 +54,11 @@ export async function extractResumeText(buffer: Buffer, mimeType: string): Promi
     } else {
       text = raw.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
     }
-    if (!text.trim()) {
+    const normalized = normalizeExtractedText(text);
+    if (!normalized || normalized.length < 10) {
       throw new AppError('Unable to extract text from the Word document', 400, 'VALIDATION_ERROR');
     }
-    return normalizeExtractedText(text);
+    return normalized;
   }
 
   throw new AppError('Unsupported resume file format', 400, 'VALIDATION_ERROR');

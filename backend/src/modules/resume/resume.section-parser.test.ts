@@ -52,4 +52,59 @@ describe('parseResumeSections', () => {
     expect(structured.sections).toEqual([]);
     expect(structured.skills).toEqual([]);
   });
+
+  it('correctly identifies section heading variations with markdown and colons', () => {
+    const markdownResume = `
+Alex Developer
+alex@example.com
+
+## PROFESSIONAL SUMMARY
+Passionate engineer with 4 years building scalable microservices.
+
+### CORE SKILLS:
+React, TypeScript, Python, Docker
+
+**WORK EXPERIENCE:**
+Senior Dev at TechHub (2021 - Present)
+Led frontend architecture.
+
+## ACADEMIC BACKGROUND:
+B.S. in Software Engineering, 2020
+
+### ACADEMIC PROJECTS
+AI Resume Scanner: built with Node and Python
+
+## ACHIEVEMENTS
+- First place at National Hackathon 2023
+- Dean's Honor List
+`.trim();
+
+    const structured = parseResumeSections(markdownResume);
+    const keys = structured.sections.map((s) => s.key);
+
+    expect(keys).toContain('summary');
+    expect(keys).toContain('skills');
+    expect(keys).toContain('experience');
+    expect(keys).toContain('education');
+    expect(keys).toContain('projects');
+    expect(keys).toContain('certifications');
+    expect(structured.skills).toContain('React');
+    expect(structured.skills).toContain('TypeScript');
+  });
+
+  it('handles resume with only education and leaves missing sections empty', () => {
+    const eduOnly = `
+John Doe
+EDUCATION
+B.Tech in Information Technology
+XYZ University
+`.trim();
+
+    const structured = parseResumeSections(eduOnly);
+    expect(structured.sections.map((s) => s.key)).toContain('education');
+    expect(structured.sections.some((s) => s.key === 'skills')).toBe(false);
+    expect(structured.sections.some((s) => s.key === 'experience')).toBe(false);
+    expect(structured.sections.some((s) => s.key === 'projects')).toBe(false);
+    expect(structured.skills).toEqual([]);
+  });
 });

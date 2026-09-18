@@ -10,6 +10,8 @@ import {
   uploadResume,
   analyzeResumeForJob,
   listJobAnalyses,
+  getLatestJobAnalysis,
+  optimizeResume,
 } from './resume.controller.js';
 import { resumeUpload } from './resume.upload.middleware.js';
 
@@ -21,6 +23,7 @@ resumeRouter.get('/:id', asyncHandler(requireAuth), asyncHandler(getResume));
 resumeRouter.post('/:id/process', asyncHandler(requireAuth), asyncHandler(processResume));
 resumeRouter.post('/:id/analyze-job', asyncHandler(requireAuth), asyncHandler(analyzeResumeForJob));
 resumeRouter.get('/:id/job-analyses', asyncHandler(requireAuth), asyncHandler(listJobAnalyses));
+resumeRouter.get('/:id/job-analyses/latest', asyncHandler(requireAuth), asyncHandler(getLatestJobAnalysis));
+resumeRouter.post('/:id/optimize', asyncHandler(requireAuth), asyncHandler(optimizeResume));
 resumeRouter.delete('/:id', asyncHandler(requireAuth), asyncHandler(deleteResume));
 resumeRouter.use('/:resumeId/versions', resumeVersionRouter);
-

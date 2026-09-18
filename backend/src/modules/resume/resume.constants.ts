@@ -10,12 +10,43 @@ export const SUPPORTED_RESUME_MIME_TYPES = [
 export const SUPPORTED_RESUME_EXTENSIONS = ['.pdf', '.txt', '.doc', '.docx'] as const;
 
 export const SECTION_HEADING_PATTERNS: Record<string, RegExp[]> = {
-  summary: [/^(professional\s+)?summary$/i, /^profile$/i, /^objective$/i, /^about(\s+me)?$/i],
-  skills: [/^(technical\s+)?skills$/i, /^core\s+competencies$/i, /^technologies$/i],
-  experience: [/^(work\s+)?experience$/i, /^employment(\s+history)?$/i, /^professional\s+experience$/i],
-  education: [/^education$/i, /^academic(\s+background)?$/i],
-  projects: [/^projects$/i, /^personal\s+projects$/i],
-  certifications: [/^certifications$/i, /^licenses(\s+and\s+certifications)?$/i],
+  summary: [
+    /^(professional\s+)?summary$/i,
+    /^profile$/i,
+    /^(career\s+)?objective$/i,
+    /^about(\s+me)?$/i,
+  ],
+  skills: [
+    /^(technical\s+|core\s+|key\s+)?skills$/i,
+    /^core\s+(competencies|skills)$/i,
+    /^technical\s+competencies$/i,
+    /^skills\s*(&|and)\s*competencies$/i,
+    /^technologies$/i,
+  ],
+  experience: [
+    /^(work|professional|relevant)\s+experience$/i,
+    /^experience$/i,
+    /^(employment|career|work)\s+history$/i,
+    /^employment$/i,
+  ],
+  education: [
+    /^education(al)?(\s+background)?$/i,
+    /^academic(\s+background)?$/i,
+    /^education\s*(&|and)\s*training$/i,
+    /^academics$/i,
+  ],
+  projects: [
+    /^(personal|academic|key|selected)\s+projects$/i,
+    /^projects$/i,
+  ],
+  certifications: [
+    /^certifications?$/i,
+    /^licenses(\s+and|\s*&)?\s+certifications?$/i,
+    /^certifications?(\s+and|\s*&)?\s+licenses$/i,
+    /^(honors?|awards?)(\s+and|\s*&)?\s*(awards?|honors?)?$/i,
+    /^achievements?$/i,
+    /^certifications?(\s+and|\s*&)?\s+achievements?$/i,
+  ],
 };
 
 /**

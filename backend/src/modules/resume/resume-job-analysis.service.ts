@@ -108,6 +108,28 @@ export class ResumeJobAnalysisService {
 
     return this.jobAnalysisRepo.listByResumeForUser(resumeId, userId);
   }
+
+  async getLatestJobAnalysis(
+    userId: string,
+    resumeId: string,
+  ): Promise<AnalyzeJobResponse | null> {
+    // Verify resume exists & user owns it
+    const resumeRecord = await this.resumeRepo.findByIdForUser(resumeId, userId);
+    if (!resumeRecord) {
+      throw new AppError('Resume not found', 404, 'NOT_FOUND');
+    }
+
+    const latest = await this.jobAnalysisRepo.findLatestByResumeForUser(resumeId, userId);
+    if (!latest || !latest.analysis_result) {
+      return null;
+    }
+
+    return {
+      success: true,
+      data: latest.analysis_result as unknown as import('../../ai/job/job-types.js').JobMatchAnalysis,
+      analysisId: latest.id,
+    };
+  }
 }
 
 export const resumeJobAnalysisService = new ResumeJobAnalysisService();

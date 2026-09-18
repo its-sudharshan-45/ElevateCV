@@ -20,10 +20,13 @@ import {
 } from 'lucide-react';
 import type { JobMatchAnalysis, ResumeDetail } from '@/features/resume/types/resume';
 import { Button } from '@/components/ui/button';
+import { ResumeOptimizer } from '@/features/resume/components/ResumeOptimizer';
 
 interface CakeMeReportProps {
   analysis?: JobMatchAnalysis;
   resume?: ResumeDetail;
+  /** The persisted job analysis ID — required to enable AI optimization. */
+  analysisId?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,23 +48,26 @@ function NoDataAvailable({ label }: { label?: string }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CakeMeReport({ analysis, resume }: CakeMeReportProps) {
+export function CakeMeReport({ analysis, resume, analysisId }: CakeMeReportProps) {
   // ── Structured resume data (may be null if resume was not yet processed) ───
   // The backend stores extractedText and structuredData only after AI processing.
   // We do NOT fall back to any hardcoded candidate information here.
   const structured = resume?.structuredData;
 
-  // StructuredResumeData shape: { sections: ResumeSection[], skills: string[] }
-  // Personal contact info is nested inside the raw structuredData JSON that the
-  // backend AI parser may emit. We read it defensively without any fallbacks.
+  // StructuredResumeData shape: { sections: ResumeSection[], skills: string[], structuredResume?: StructuredResume }
+  // Personal contact info is nested inside structuredResume or raw structuredData JSON.
+  // We read it defensively without any fallbacks.
   const rawPersonal = (structured as {
     personal?: { name?: string; phone?: string; email?: string; links?: string[] };
-  } | null)?.personal;
+    structuredResume?: {
+      personal?: { name?: string; phone?: string; email?: string; location?: string };
+    };
+  } | null);
 
-  const candidateName  = rawPersonal?.name  ?? null;
-  const candidatePhone = rawPersonal?.phone ?? null;
-  const candidateEmail = rawPersonal?.email ?? null;
-  const candidateLinks = rawPersonal?.links ?? [];
+  const candidateName  = rawPersonal?.personal?.name ?? rawPersonal?.structuredResume?.personal?.name ?? null;
+  const candidatePhone = rawPersonal?.personal?.phone ?? rawPersonal?.structuredResume?.personal?.phone ?? null;
+  const candidateEmail = rawPersonal?.personal?.email ?? rawPersonal?.structuredResume?.personal?.email ?? null;
+  const candidateLinks = rawPersonal?.personal?.links ?? [];
 
   // Match score — real value from job match analysis or resume completeness score
   const score = analysis?.matchScore ?? resume?.score ?? 0;
@@ -260,7 +266,69 @@ export function CakeMeReport({ analysis, resume }: CakeMeReportProps) {
               ) : null}
             </div>
           </div>
+
+          {/* Component Score Breakdown (Single Source of Truth: Backend Weights) */}
+          {analysis?.breakdown && (
+            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                  ATS Component Breakdown
+                </h3>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Single source of truth formula
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { name: 'Skills', weight: '40%', score: analysis.breakdown.skills },
+                  { name: 'Experience', weight: '20%', score: analysis.breakdown.experience },
+                  { name: 'Responsibilities', weight: '15%', score: analysis.breakdown.responsibilities },
+                  { name: 'Projects', weight: '10%', score: analysis.breakdown.projects },
+                  { name: 'Keywords', weight: '10%', score: analysis.breakdown.keywords },
+                  { name: 'Education', weight: '5%', score: analysis.breakdown.education },
+                ].map((item) => (
+                  <div
+                    key={item.name}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 space-y-1 text-center"
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                      <span>{item.name}</span>
+                      <span>{item.weight}</span>
+                    </div>
+                    <p className={`text-lg font-black ${
+                      item.score >= 80
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : item.score >= 60
+                        ? 'text-[#007A5A] dark:text-emerald-300'
+                        : item.score >= 40
+                        ? 'text-amber-700 dark:text-amber-400'
+                        : 'text-rose-700 dark:text-rose-400'
+                    }`}>
+                      {item.score}%
+                    </p>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-[#007A5A] h-full rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(0, item.score))}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
+      )}
+
+      {/* ================= AI Optimizer — shown when job analysis is available ================= */}
+      {analysis && analysisId && resume?.id && (
+        <div className="no-print">
+          <ResumeOptimizer
+            resumeId={resume.id}
+            analysisId={analysisId}
+            analysis={analysis}
+          />
+        </div>
       )}
 
       {/* ================= 2. CONTENT ================= */}

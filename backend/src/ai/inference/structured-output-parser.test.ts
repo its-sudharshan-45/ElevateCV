@@ -46,6 +46,30 @@ describe('StructuredOutputParser', () => {
       const fixed = StructuredOutputParser.repairJson(broken);
       expect(() => JSON.parse(fixed)).not.toThrow();
     });
+
+    it('strips single-line and block comments', () => {
+      const broken = `{\n  // this is a comment\n  "a": 1 /* inline comment */\n}`;
+      const fixed = StructuredOutputParser.repairJson(broken);
+      const parsed = JSON.parse(fixed);
+      expect(parsed).toEqual({ a: 1 });
+    });
+
+    it('auto-closes unclosed strings and structures', () => {
+      const broken = '{"items": [{"name": "item 1"}, {"name": "item 2';
+      const fixed = StructuredOutputParser.repairJson(broken);
+      expect(() => JSON.parse(fixed)).not.toThrow();
+      const parsed = JSON.parse(fixed);
+      expect(parsed.items).toHaveLength(2);
+      expect(parsed.items[1].name).toBe('item 2');
+    });
+
+    it('handles unescaped raw newlines inside string literals', () => {
+      const broken = '{"text": "line 1\nline 2"}';
+      const fixed = StructuredOutputParser.repairJson(broken);
+      expect(() => JSON.parse(fixed)).not.toThrow();
+      const parsed = JSON.parse(fixed);
+      expect(parsed.text).toBe('line 1\nline 2');
+    });
   });
 
   describe('parseAndValidate', () => {
@@ -72,7 +96,7 @@ describe('StructuredOutputParser', () => {
       expect(result.questions).toHaveLength(1);
     });
 
-    it('throws InvalidModelOutputError on unparseable raw text', () => {
+    it('throws InvalidModelOutputError on invalid raw text that cannot be parsed', () => {
       const raw = 'This is completely invalid non-JSON text with no structure.';
       expect(() => StructuredOutputParser.parseAndValidate(raw, questionSchema)).toThrow();
     });

@@ -37,8 +37,12 @@ export function parsePaginationOptions(query: {
   page?: unknown;
   limit?: unknown;
 }): PaginationOptions {
-  const page = Math.max(1, Number(query.page) || DEFAULT_PAGE);
-  const limit = Math.min(MAX_LIMIT, Math.max(1, Number(query.limit) || DEFAULT_LIMIT));
+  const parsedPage = Number(query.page);
+  const page = Number.isFinite(parsedPage) ? Math.max(1, Math.floor(parsedPage)) : DEFAULT_PAGE;
+  const parsedLimit = Number(query.limit);
+  const limit = Number.isFinite(parsedLimit)
+    ? Math.min(MAX_LIMIT, Math.max(1, Math.floor(parsedLimit)))
+    : DEFAULT_LIMIT;
   return { page, limit };
 }
 
@@ -49,11 +53,12 @@ export function toRange(options: PaginationOptions): { offset: number; limit: nu
 
 /** Build a pagination meta object from total row count + current options. */
 export function buildPaginationMeta(total: number, options: PaginationOptions): PaginationMeta {
-  const totalPages = Math.max(1, Math.ceil(total / options.limit));
+  const safeTotal = Math.max(0, Math.floor(total));
+  const totalPages = Math.max(1, Math.ceil(safeTotal / options.limit));
   return {
     page: options.page,
     limit: options.limit,
-    total,
+    total: safeTotal,
     totalPages,
     hasNextPage: options.page < totalPages,
     hasPreviousPage: options.page > 1,
