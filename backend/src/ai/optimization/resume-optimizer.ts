@@ -1,11 +1,17 @@
 // cspell:ignore structuredResume skillDetail keywordDetail responsibilityDetail
+import { randomUUID } from 'node:crypto';
 import { logger } from '../../config/logger.js';
 import type { JobMatchAnalysis } from '../job/job-types.js';
 import type { StructuredResume } from '../resume/resume-types.js';
 import { StructuredOutputParser } from '../inference/structured-output-parser.js';
 import { PromptSanitizer } from '../inference/prompt-sanitizer.js';
 import { aiService } from '../ai.service.js';
-import { optimizationResultSchema, type OptimizationResult } from './optimization-types.js';
+import { AppError } from '../../utils/errors.js';
+import {
+  optimizationResultSchema,
+  type OptimizationResult,
+  type OptimizableSectionKey,
+} from './optimization-types.js';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -19,10 +25,37 @@ const MAX_JD_CHARS = 3_000;
 const MAX_TOKENS = 8_000;
 
 // ---------------------------------------------------------------------------
+// Section Label Mapping
+// ---------------------------------------------------------------------------
+
+export function getSectionDisplayName(key: OptimizableSectionKey): string {
+  switch (key) {
+    case 'summary':
+      return 'Professional Summary';
+    case 'skills':
+      return 'Skills';
+    case 'experience':
+      return 'Work Experience';
+    case 'projects':
+      return 'Projects';
+    case 'education':
+      return 'Education';
+    case 'certifications':
+      return 'Certifications';
+    case 'achievements':
+      return 'Achievements';
+    case 'personal':
+      return 'Personal Information';
+    default:
+      return key;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getOriginalSectionText(structuredResume: StructuredResume, key: string): string {
+export function getOriginalSectionText(structuredResume: StructuredResume, key: string): string {
   switch (key) {
     case 'summary':
       return structuredResume.summary ?? '';
@@ -30,12 +63,42 @@ function getOriginalSectionText(structuredResume: StructuredResume, key: string)
       return (structuredResume.skills ?? []).join(', ');
     case 'experience':
       return (structuredResume.experience ?? [])
-        .map((e) => `${e.title ?? ''} at ${e.company ?? ''}: ${e.description ?? ''}`)
+        .map((e) => {
+          const dates = [e.startDate, e.endDate].filter(Boolean).join(' - ');
+          const dateStr = dates ? ` (${dates})` : '';
+          return `${e.title ?? ''} at ${e.company ?? ''}${dateStr}:\n${e.description ?? ''}`.trim();
+        })
         .join('\n\n');
     case 'projects':
       return (structuredResume.projects ?? [])
-        .map((p) => `${p.name ?? ''} [${(p.technologies ?? []).join(', ')}]: ${p.description ?? ''}`)
+        .map((p) => {
+          const tech = (p.technologies ?? []).length > 0 ? ` [${(p.technologies ?? []).join(', ')}]` : '';
+          return `${p.name ?? ''}${tech}:\n${p.description ?? ''}`.trim();
+        })
         .join('\n\n');
+    case 'education':
+      return (structuredResume.education ?? [])
+        .map((ed) => {
+          const parts = [ed.degree, ed.field, ed.institution].filter(Boolean).join(', ');
+          const dates = [ed.startDate, ed.endDate].filter(Boolean).join(' - ');
+          return `${parts}${dates ? ` (${dates})` : ''}${ed.description ? `\n${ed.description}` : ''}`.trim();
+        })
+        .join('\n\n');
+    case 'certifications':
+      return (structuredResume.certifications ?? [])
+        .map((c) => `${c.name ?? ''}${c.issuer ? ` by ${c.issuer}` : ''}${c.date ? ` (${c.date})` : ''}`.trim())
+        .join('\n');
+    case 'achievements':
+      return (structuredResume.achievements ?? []).join('\n');
+    case 'personal':
+      return [
+        structuredResume.personal.name,
+        structuredResume.personal.email,
+        structuredResume.personal.phone,
+        structuredResume.personal.location,
+      ]
+        .filter(Boolean)
+        .join(' | ');
     default:
       return '';
   }
@@ -48,35 +111,39 @@ function getOriginalSectionText(structuredResume: StructuredResume, key: string)
 function buildSystemPrompt(): string {
   return `You are an expert resume optimization assistant integrated into ElevateCV.
 
-Your sole purpose is to improve the clarity, relevance, and ATS alignment of an existing resume.
+Your sole purpose is to improve the clarity, relevance, and ATS alignment of an existing resume against a specific target Job Description.
 
-## STRICT RULES — DO NOT VIOLATE
+## STRICT RULES — NEVER VIOLATE UNDER ANY CIRCUMSTANCE:
 
-1. You MUST NOT invent or fabricate any of the following:
-   - Company names
-   - Job titles
-   - Degrees or certifications
-   - Technologies or tools not already in the resume
-   - Projects not already in the resume
-   - Years of experience
-   - Performance metrics (e.g., do NOT add "by 42%" unless the original text already states it)
-   - Awards or achievements not already mentioned
+1. GROUNDING & ANTI-HALLUCINATION:
+   - Use ONLY facts, experiences, employers, degrees, tools, metrics, and achievements actually present in the resume.
+   - You MUST NOT invent, assume, or extrapolate:
+     * Company names or employers
+     * Job titles or positions
+     * Degrees, universities, or certifications
+     * Technologies, programming languages, or tools not already mentioned
+     * Projects or clients not already mentioned
+     * Years or duration of experience
+     * Quantified performance metrics (e.g., do NOT invent "increased revenue by 35%" or "reduced latency by 40%" unless the original text explicitly provided those numbers)
+     * Awards or honors not already in the resume
 
-2. You MUST NOT silently add missing skills as if the candidate already has them.
-   If the job description requires a skill absent from the resume, you may only SUGGEST the candidate
-   add it if they genuinely have experience — never insert it as an existing skill.
+2. HANDLING MISSING SKILLS & REQUIREMENTS:
+   - You MUST NOT silently add missing skills or tools required by the job description to the resume.
+   - If the job description requires a skill missing from the resume:
+     * Put it in "keywordImprovements" or "suggestions" as a recommendation for the user to consider IF they have relevant experience.
+     * Never present a missing skill as an existing skill in "optimizedSections".
 
-3. You MUST preserve all factual information exactly as stated in the original resume.
+3. ACCURACY & FACTUAL INTEGRITY:
+   - Your suggestions must be limited to:
+     * More concise, impactful phrasing and structure
+     * Strong active verbs (e.g., "Architected", "Engineered", "Optimized", "Spearheaded")
+     * Weaving in ATS keywords ONLY where factual context in the candidate's existing background genuinely supports it
+     * Improving alignment with the job description using existing resume facts
+   - If a section already has strong phrasing and cannot be improved without fabricating details, do not force an edit.
 
-4. Your improvements are limited to:
-   - Clearer phrasing and structure
-   - Better use of action verbs
-   - Weaving in relevant keywords naturally (only if context from resume supports it)
-   - Improving alignment with the job description using existing resume facts
-
-5. If a section has no meaningful improvement, return the original text unchanged and explain why.
-
-6. Return ONLY valid JSON matching the specified schema. No markdown, no explanations outside JSON.`;
+4. STRUCTURED DATA OUTPUT:
+   - Return ONLY a single valid JSON object strictly adhering to the schema.
+   - No introductory text, no markdown wrappers, no commentary outside the JSON.`;
 }
 
 function buildUserPrompt(
@@ -97,14 +164,13 @@ function buildUserPrompt(
 
   const summaryText = structuredResume.summary ?? '';
   const skillsText = (structuredResume.skills ?? []).join(', ');
-  const experienceText = (structuredResume.experience ?? [])
-    .map((e) => `${e.title ?? ''} at ${e.company ?? ''}: ${e.description ?? ''}`)
-    .join('\n');
-  const projectsText = (structuredResume.projects ?? [])
-    .map((p) => `${p.name ?? ''} [${(p.technologies ?? []).join(', ')}]: ${p.description ?? ''}`)
-    .join('\n');
+  const experienceText = getOriginalSectionText(structuredResume, 'experience');
+  const projectsText = getOriginalSectionText(structuredResume, 'projects');
+  const educationText = getOriginalSectionText(structuredResume, 'education');
+  const certificationsText = getOriginalSectionText(structuredResume, 'certifications');
+  const achievementsText = getOriginalSectionText(structuredResume, 'achievements');
 
-  return `Below is everything you need to optimize this resume.
+  return `Below is the candidate's current resume, the target job description, and the existing ATS match analysis.
 
 ${PromptSanitizer.wrapWithContext('resume_raw_text', sanitizedRaw)}
 
@@ -112,10 +178,10 @@ ${PromptSanitizer.wrapWithContext('job_description', sanitizedJD)}
 
 <ats_analysis>
 ATS Match Score: ${analysis.matchScore}/100 (${analysis.category})
-Missing Required Skills: ${missingSkills.join(', ') || 'None'}
-Missing Keywords: ${missingKeywords.join(', ') || 'None'}
-Unmatched Responsibilities: ${unmatchedResponsibilities.join('; ') || 'None'}
-ATS Recommendations:
+Missing Required Skills from JD: ${missingSkills.join(', ') || 'None'}
+Missing Keywords from JD: ${missingKeywords.join(', ') || 'None'}
+Unmatched Responsibilities from JD: ${unmatchedResponsibilities.join('; ') || 'None'}
+ATS System Recommendations:
 ${recommendations || 'None'}
 </ats_analysis>
 
@@ -126,40 +192,46 @@ Experience:
 ${experienceText || '(not present)'}
 Projects:
 ${projectsText || '(not present)'}
+Education:
+${educationText || '(not present)'}
+Certifications:
+${certificationsText || '(not present)'}
+Achievements:
+${achievementsText || '(not present)'}
 </structured_resume>
 
-Based on the above, return ONLY a valid JSON object matching this schema:
+Based on the above, generate optimization suggestions. Return ONLY a valid JSON object matching this schema:
 {
   "optimizedSections": [
     {
       "key": "summary",
-      "original": "<original text of this section>",
-      "improved": "<improved text for this section — rewrite to improve impact and ATS alignment using ONLY existing factual experience>",
-      "reason": "<brief explanation of changes>"
+      "original": "<original text from resume>",
+      "improved": "<improved text for this section — rewrite for ATS impact using ONLY existing factual experience>",
+      "reason": "<clear explanation of why this improvement aligns better with the target job description>"
     }
   ],
   "suggestions": [
     {
       "priority": "high",
-      "text": "<actionable suggestion>",
+      "text": "<actionable recommendation for the user>",
       "impact": "<expected ATS/hiring impact>"
     }
   ],
   "keywordImprovements": [
     {
       "keyword": "<missing keyword from JD>",
-      "suggestion": "<natural way to incorporate it IF candidate genuinely has relevant experience>"
+      "suggestion": "<natural way candidate can incorporate it IF candidate genuinely has relevant experience>"
     }
   ],
   "warnings": [
-    "<anti-hallucination warning or note>"
+    "<anti-hallucination notices: explicitly note skills/facts from JD that were omitted because candidate has no stated experience>"
   ]
 }
 
 Instructions:
-1. "optimizedSections" keys can only be one of: "summary", "experience", "projects", "skills". Only include sections that actually exist in the resume.
-2. The improved text must strictly preserve factual information from the original resume. Do not invent employers, titles, tools, or metrics.
-3. Return ONLY the raw JSON object. Do not include markdown formatting or comments.`;
+1. "optimizedSections" keys can only be one of: "summary", "experience", "projects", "skills", "education", "certifications", "achievements". Only optimize sections that actually exist in the resume.
+2. The improved text must strictly preserve factual information. Never invent employers, titles, tools, or metrics.
+3. Return ONLY valid JSON.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,32 +255,70 @@ export async function optimizeResume(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(structuredResume, analysis, rawResumeText, jobDescription);
 
-  const result = await aiService.complete({
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.3,
-    maxTokens: MAX_TOKENS,
-    responseFormat: 'json',
-    timeoutMs: 60_000,
-  });
+  let result;
+  try {
+    result = await aiService.complete({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.3,
+      maxTokens: MAX_TOKENS,
+      responseFormat: 'json',
+      timeoutMs: 60_000,
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    const message = error instanceof Error ? error.message : 'AI optimization service request failed';
+    logger.error({ err: error }, 'AI service complete call failed during resume optimization');
+    throw new AppError(message, 502, 'AI_PROVIDER_ERROR');
+  }
 
   logger.info(
     { provider: result.provider, model: result.model, latencyMs: result.latencyMs },
     'AI optimization completion received',
   );
 
-  const optimizationResult = StructuredOutputParser.parseAndValidate(
-    result.content,
-    optimizationResultSchema,
-    'resume-optimizer',
-  );
+  let optimizationResult: OptimizationResult;
+  try {
+    optimizationResult = StructuredOutputParser.parseAndValidate<OptimizationResult>(
+      result.content,
+      optimizationResultSchema,
+      'resume-optimizer',
+    );
+  } catch (parseError) {
+    logger.error({ err: parseError, rawContent: result.content }, 'Failed to parse AI optimization response');
+    if (parseError instanceof AppError) {
+      throw parseError;
+    }
+    throw new AppError(
+      'AI model returned an unparsable or invalid optimization response. Please try again.',
+      502,
+      'INVALID_MODEL_OUTPUT',
+    );
+  }
 
-  // Ensure original section text is populated for side-by-side comparison
+  // Populate id, section label, original content, suggested content, and initial status
   for (const section of optimizationResult.optimizedSections) {
+    if (!section.id) {
+      section.id = `sug-${randomUUID()}`;
+    }
+    if (!section.section) {
+      section.section = getSectionDisplayName(section.key);
+    }
     if (!section.original || section.original.trim().length === 0) {
       section.original = getOriginalSectionText(structuredResume, section.key);
+    }
+    if (!section.originalContent) {
+      section.originalContent = section.original;
+    }
+    if (!section.suggestedContent) {
+      section.suggestedContent = section.improved;
+    }
+    if (!section.status) {
+      section.status = 'PENDING';
     }
   }
 

@@ -1,14 +1,42 @@
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
-// Per-section optimization output
+// Suggestion Status Enum
+// ---------------------------------------------------------------------------
+
+export const suggestionStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'REJECTED']);
+export type SuggestionStatus = z.infer<typeof suggestionStatusSchema>;
+
+// ---------------------------------------------------------------------------
+// Supported Resume Section Keys for Optimization
+// ---------------------------------------------------------------------------
+
+export const optimizableSectionKeySchema = z.enum([
+  'summary',
+  'experience',
+  'projects',
+  'skills',
+  'education',
+  'certifications',
+  'achievements',
+  'personal',
+]);
+export type OptimizableSectionKey = z.infer<typeof optimizableSectionKeySchema>;
+
+// ---------------------------------------------------------------------------
+// Per-section optimization suggestion output
 // ---------------------------------------------------------------------------
 
 export const optimizedSectionSchema = z.object({
-  key: z.enum(['summary', 'experience', 'projects', 'skills']),
+  id: z.string().optional(),
+  key: optimizableSectionKeySchema,
+  section: z.string().optional(),
   original: z.string(),
   improved: z.string(),
+  originalContent: z.string().optional(),
+  suggestedContent: z.string().optional(),
   reason: z.string(),
+  status: suggestionStatusSchema.optional(),
 });
 
 export type OptimizedSection = z.infer<typeof optimizedSectionSchema>;
