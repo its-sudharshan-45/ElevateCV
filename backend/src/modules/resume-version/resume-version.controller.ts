@@ -20,6 +20,9 @@ export async function createVersion(req: Request, res: Response): Promise<void> 
     userId: req.user.id,
     title: body.title,
     changesSummary: body.changesSummary,
+    source: body.source,
+    structuredData: body.structuredData,
+    score: body.score,
   });
 
   res.status(201).json({ version });
@@ -45,6 +48,18 @@ export async function getVersion(req: Request, res: Response): Promise<void> {
   const version = await resumeVersionService.getVersion(versionId, req.user.id);
 
   res.status(200).json({ version });
+}
+
+export async function restoreVersion(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_ERROR');
+  }
+
+  const resumeId = getRouteParam(req.params, 'resumeId');
+  const versionId = getRouteParam(req.params, 'versionId');
+  const version = await resumeVersionService.restoreVersion(resumeId, versionId, req.user.id);
+
+  res.status(201).json({ version });
 }
 
 export async function compareVersions(req: Request, res: Response): Promise<void> {

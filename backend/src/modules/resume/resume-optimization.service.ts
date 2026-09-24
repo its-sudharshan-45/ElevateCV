@@ -55,8 +55,25 @@ export class ResumeOptimizationService {
     }
 
     // 6. Extract structured resume — required for grounded optimization
-    const structuredResume = resumeRecord.structured_data
+    let structuredResume = resumeRecord.structured_data
       ?.structuredResume as StructuredResume | undefined;
+
+    if (!structuredResume) {
+      const sections = resumeRecord.structured_data?.sections ?? [];
+      const skills = resumeRecord.structured_data?.skills ?? [];
+      if (sections.length > 0 || skills.length > 0) {
+        structuredResume = {
+          personal: {},
+          summary: sections.find((s) => s.key === 'summary')?.content,
+          skills,
+          experience: [],
+          education: [],
+          projects: [],
+          certifications: [],
+          languages: [],
+        };
+      }
+    }
 
     if (!structuredResume) {
       throw new AppError(

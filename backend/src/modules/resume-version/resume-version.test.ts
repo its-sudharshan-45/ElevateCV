@@ -225,4 +225,52 @@ describe('Resume Version API', () => {
 
     expect(res.status).toBe(404);
   });
+
+  it('restores a version and creates a new version with source RESTORED', async () => {
+    vi.mocked(resumeRepository.findByIdForUser).mockResolvedValue(processedResume);
+    vi.mocked(resumeVersionRepository.findByIdForUser).mockResolvedValue(sampleVersionRecord);
+    vi.mocked(resumeVersionRepository.getNextVersionNumber).mockResolvedValue(3);
+    vi.mocked(resumeVersionRepository.create).mockResolvedValue({
+      ...sampleVersionRecord,
+      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      version_number: 3,
+      title: 'Restored from v1',
+      source: 'RESTORED',
+      is_current: true,
+    });
+
+    const app = createApp();
+    const res = await request(app)
+      .post(`/api/v1/resumes/${RESUME_ID}/versions/${VERSION_ID_A}/restore`)
+      .set(authHeader());
+
+    expect(res.status).toBe(201);
+    expect(res.body.version.versionNumber).toBe(3);
+    expect(res.body.version.source).toBe('RESTORED');
+    expect(res.body.version.isCurrent).toBe(true);
+  });
+
+  it('creates an AI-optimized version snapshot with custom source', async () => {
+    vi.mocked(resumeRepository.findByIdForUser).mockResolvedValue(processedResume);
+    vi.mocked(resumeVersionRepository.getNextVersionNumber).mockResolvedValue(2);
+    vi.mocked(resumeVersionRepository.create).mockResolvedValue({
+      ...sampleVersionRecordB,
+      source: 'AI_OPTIMIZED',
+      is_current: true,
+    });
+
+    const app = createApp();
+    const res = await request(app)
+      .post(`/api/v1/resumes/${RESUME_ID}/versions`)
+      .set(authHeader())
+      .send({
+        title: 'AI Optimized V2',
+        changesSummary: 'Accepted AI suggestions',
+        source: 'AI_OPTIMIZED',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.version.source).toBe('AI_OPTIMIZED');
+  });
 });
+
