@@ -10,6 +10,9 @@ import {
   Tag,
   Info,
   Loader2,
+  Check,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { optimizeResume } from '@/features/resume/api/resume.api';
@@ -30,6 +33,8 @@ interface ResumeOptimizerProps {
   resumeId: string;
   analysisId: string;
   analysis: JobMatchAnalysis;
+  onApplySuggestion?: (sectionKey: string, improvedText: string) => void;
+  onSuggestionsGenerated?: (suggestions: OptimizedSection[]) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,35 +54,119 @@ function priorityLabel(priority: 'high' | 'medium' | 'low') {
 }
 
 function sectionLabel(key: OptimizedSection['key']) {
-  if (key === 'summary') return 'Professional Summary';
-  if (key === 'experience') return 'Experience';
-  if (key === 'projects') return 'Projects';
-  return 'Skills';
+  switch (key) {
+    case 'summary':
+      return 'Professional Summary';
+    case 'experience':
+      return 'Experience';
+    case 'projects':
+      return 'Projects';
+    case 'skills':
+      return 'Skills';
+    case 'education':
+      return 'Education';
+    case 'certifications':
+      return 'Certifications';
+    case 'achievements':
+      return 'Achievements';
+    default:
+      return 'Resume Section';
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function SectionDiff({ section }: { section: OptimizedSection }) {
+interface SectionDiffProps {
+  section: OptimizedSection;
+  onAccept?: (key: string, text: string) => void;
+  onReject?: (key: string) => void;
+}
+
+function SectionDiff({ section, onAccept, onReject }: SectionDiffProps) {
   const [expanded, setExpanded] = useState(true);
+  const isAccepted = section.status === 'ACCEPTED';
+  const isRejected = section.status === 'REJECTED';
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 overflow-hidden">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        aria-expanded={expanded}
-      >
-        <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-          {sectionLabel(section.key)}
-        </span>
-        {expanded ? (
-          <ChevronUp className="w-4 h-4 text-slate-400" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-slate-400" />
-        )}
-      </button>
+    <div
+      className={`rounded-2xl border transition-all overflow-hidden ${
+        isAccepted
+          ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/20'
+          : isRejected
+          ? 'border-slate-200 dark:border-slate-800 bg-slate-50/50 opacity-70'
+          : 'border-slate-200/80 dark:border-slate-700'
+      }`}
+    >
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-1 flex items-center justify-between cursor-pointer mr-3"
+          aria-expanded={expanded}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              {sectionLabel(section.key)}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                isAccepted
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  : isRejected
+                  ? 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+              }`}
+            >
+              {section.status ?? 'PENDING'}
+            </span>
+          </div>
+          {expanded ? (
+            <ChevronUp className="w-4 h-4 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-slate-400" />
+          )}
+        </button>
+
+        {/* Accept / Reject Quick Buttons */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {!isAccepted ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => onAccept?.(section.key, section.improved)}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold bg-[#16A36A] hover:bg-[#118A58] text-white flex items-center gap-1 cursor-pointer"
+            >
+              <Check className="w-3 h-3" />
+              <span>Accept</span>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onReject?.(section.key)}
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Revert</span>
+            </Button>
+          )}
+
+          {!isRejected && !isAccepted && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onReject?.(section.key)}
+              className="h-7 px-2 rounded-lg text-[11px] font-bold text-slate-500 hover:text-rose-600 dark:text-slate-400 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+              <span>Reject</span>
+            </Button>
+          )}
+        </div>
+      </div>
 
       {expanded && (
         <div className="p-4 space-y-3 text-xs">
@@ -147,7 +236,13 @@ function KeywordCard({ improvement }: { improvement: KeywordImprovement }) {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function ResumeOptimizer({ resumeId, analysisId, analysis }: ResumeOptimizerProps) {
+export function ResumeOptimizer({
+  resumeId,
+  analysisId,
+  analysis,
+  onApplySuggestion,
+  onSuggestionsGenerated,
+}: ResumeOptimizerProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -160,12 +255,22 @@ export function ResumeOptimizer({ resumeId, analysisId, analysis }: ResumeOptimi
 
     try {
       const response = await optimizeResume(resumeId, analysisId);
-      setResult(response.data);
+      const dataWithStatus: OptimizationResult = {
+        ...response.data,
+        optimizedSections: response.data.optimizedSections.map((s) => ({
+          ...s,
+          status: s.status ?? 'PENDING',
+        })),
+      };
+
+      setResult(dataWithStatus);
       setStatus('success');
+      onSuggestionsGenerated?.(dataWithStatus.optimizedSections);
+
       // Auto-select the first tab with content, defaulting to sections
-      if (response.data.optimizedSections.length > 0) setActiveTab('sections');
-      else if (response.data.suggestions.length > 0) setActiveTab('suggestions');
-      else if (response.data.keywordImprovements.length > 0) setActiveTab('keywords');
+      if (dataWithStatus.optimizedSections.length > 0) setActiveTab('sections');
+      else if (dataWithStatus.suggestions.length > 0) setActiveTab('suggestions');
+      else if (dataWithStatus.keywordImprovements.length > 0) setActiveTab('keywords');
       else setActiveTab('sections');
     } catch (err) {
       setStatus('error');
@@ -175,6 +280,41 @@ export function ResumeOptimizer({ resumeId, analysisId, analysis }: ResumeOptimi
           : 'AI optimization failed. Please try again.',
       );
     }
+  }
+
+  function handleAccept(sectionKey: string, improvedText: string) {
+    if (!result) return;
+    const updatedSections = result.optimizedSections.map((s) =>
+      s.key === sectionKey ? { ...s, status: 'ACCEPTED' as const } : s,
+    );
+    setResult({ ...result, optimizedSections: updatedSections });
+    onApplySuggestion?.(sectionKey, improvedText);
+  }
+
+  function handleReject(sectionKey: string) {
+    if (!result) return;
+    const updatedSections = result.optimizedSections.map((s) =>
+      s.key === sectionKey ? { ...s, status: 'REJECTED' as const } : s,
+    );
+    setResult({ ...result, optimizedSections: updatedSections });
+  }
+
+  function handleAcceptAll() {
+    if (!result) return;
+    const updatedSections = result.optimizedSections.map((s) => {
+      onApplySuggestion?.(s.key, s.improved);
+      return { ...s, status: 'ACCEPTED' as const };
+    });
+    setResult({ ...result, optimizedSections: updatedSections });
+  }
+
+  function handleRejectAll() {
+    if (!result) return;
+    const updatedSections = result.optimizedSections.map((s) => ({
+      ...s,
+      status: 'REJECTED' as const,
+    }));
+    setResult({ ...result, optimizedSections: updatedSections });
   }
 
   const missingSkillsCount = analysis.skillDetail?.missingRequired?.length ?? 0;
@@ -290,6 +430,35 @@ export function ResumeOptimizer({ resumeId, analysisId, analysis }: ResumeOptimi
             </div>
           </div>
 
+          {/* Quick Review Header for Sections */}
+          {result.optimizedSections.length > 0 && (
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700 text-xs">
+              <span className="font-bold text-slate-700 dark:text-slate-300">
+                Review suggestions & accept into draft:
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAcceptAll}
+                  className="h-7 px-2.5 rounded-lg text-[11px] font-bold text-emerald-700 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50"
+                >
+                  Accept All
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRejectAll}
+                  className="h-7 px-2.5 rounded-lg text-[11px] font-bold text-slate-600"
+                >
+                  Reject All
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Tabs */}
           <div className="flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
             {[
@@ -317,7 +486,12 @@ export function ResumeOptimizer({ resumeId, analysisId, analysis }: ResumeOptimi
             <div className="space-y-4">
               {result.optimizedSections.length > 0 ? (
                 result.optimizedSections.map((section, idx) => (
-                  <SectionDiff key={`${section.key}-${idx}`} section={section} />
+                  <SectionDiff
+                    key={`${section.key}-${idx}`}
+                    section={section}
+                    onAccept={handleAccept}
+                    onReject={handleReject}
+                  />
                 ))
               ) : (
                 <div className="flex items-center gap-2 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700 text-xs text-slate-500">

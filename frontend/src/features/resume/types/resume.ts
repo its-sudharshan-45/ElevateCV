@@ -16,9 +16,58 @@ export interface ResumeSection {
   content: string;
 }
 
+export interface PersonalInfo {
+  name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+}
+
+export interface ExperienceItem {
+  title?: string;
+  company?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface EducationItem {
+  degree?: string;
+  field?: string;
+  institution?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface ProjectItem {
+  name?: string;
+  description?: string;
+  technologies?: string[];
+}
+
+export interface CertificationItem {
+  name?: string;
+  issuer?: string;
+  date?: string;
+}
+
+export interface StructuredResume {
+  personal: PersonalInfo;
+  summary?: string;
+  skills: string[];
+  experience: ExperienceItem[];
+  education: EducationItem[];
+  projects: ProjectItem[];
+  certifications: CertificationItem[];
+  languages?: string[];
+  achievements?: string[];
+}
+
 export interface StructuredResumeData {
   sections: ResumeSection[];
   skills: string[];
+  structuredResume?: StructuredResume;
 }
 
 export interface SectionAnalysis {
@@ -181,16 +230,28 @@ export interface JobAnalysisListResponse {
   analyses: JobAnalysisListItem[];
 }
 
+// ---------------------------------------------------------------------------
+// Resume Version Origin / Source
+// ---------------------------------------------------------------------------
+
+export type ResumeVersionSource = 'ORIGINAL' | 'AI_OPTIMIZED' | 'MANUAL_EDIT' | 'RESTORED';
 
 // ---------------------------------------------------------------------------
 // AI Resume Optimization Types
 // ---------------------------------------------------------------------------
 
+export type SuggestionStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+
 export interface OptimizedSection {
-  key: 'summary' | 'experience' | 'projects' | 'skills';
+  id?: string;
+  key: 'summary' | 'experience' | 'projects' | 'skills' | 'education' | 'certifications' | 'achievements' | 'personal';
+  section?: string;
   original: string;
   improved: string;
+  originalContent?: string;
+  suggestedContent?: string;
   reason: string;
+  status?: SuggestionStatus;
 }
 
 export interface OptimizationSuggestion {
